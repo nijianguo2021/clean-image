@@ -2,7 +2,7 @@
 let session=null;
 async function initialize(){
  if(session)return session;
- self.postMessage({progress:'首次加载免费 AI 模型（约 28 MB），图片不会上传…'});
+ self.postMessage({progress:'首次加载处理资源，图片不会上传…'});
  importScripts('ort/ort.min.js?v=wasm1');
  ort.env.wasm.wasmPaths=new URL('ort/',self.location.href).href;
  ort.env.wasm.numThreads=1;ort.env.wasm.proxy=false;
@@ -17,12 +17,12 @@ self.onmessage=async e=>{try{
  x0=Math.max(0,x0-96);y0=Math.max(0,y0-96);x1=Math.min(width-1,x1+96);y1=Math.min(height-1,y1+96);
  const w=x1-x0+1,h=y1-y0+1,n=w*h,image=new Uint8Array(n*3),modelMask=new Uint8Array(n);
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const p=y*w+x,q=(y+y0)*width+x+x0;for(let c=0;c<3;c++)image[c*n+p]=source[q*4+c];modelMask[p]=mask[q]?0:255;}
- const s=await initialize();self.postMessage({progress:'AI 正在本机补全背景，首次运行可能较慢…'});
+ const s=await initialize();self.postMessage({progress:'正在补全背景，首次处理可能较慢…'});
  const result=await s.run({image:new ort.Tensor('uint8',image,[1,3,h,w]),mask:new ort.Tensor('uint8',modelMask,[1,1,h,w])});
  const output=result[s.outputNames[0]];
- if(output.dims.length!==4||output.dims[1]!==3||output.dims[2]!==h||output.dims[3]!==w)throw Error('模型输出尺寸异常，请缩小选区重试');
+ if(output.dims.length!==4||output.dims[1]!==3||output.dims[2]!==h||output.dims[3]!==w)throw Error('输出尺寸异常，请缩小选区重试');
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const p=y*w+x,q=(y+y0)*width+x+x0;if(mask[q])for(let c=0;c<3;c++)source[q*4+c]=output.data[c*n+p];}
  for(const v of Object.values(result))v.dispose?.();
  self.postMessage({pixels:source.buffer},[source.buffer]);
- }catch(e){self.postMessage({error:'AI 修复未完成：'+(e.message||String(e))+'。可重试或缩小选区。'});}};
+ }catch(e){self.postMessage({error:'修复未完成：'+(e.message||String(e))+'。可重试或缩小选区。'});}};
 
