@@ -1,5 +1,5 @@
 // MI-GAN runs on this device. Only model/runtime files are downloaded.
-importScripts('repair-loader.js?v=mobile1','repair-quality.js?v=detail4');
+importScripts('repair-loader.js?v=mobile1','repair-quality.js?v=detail5');
 let session=null,phase='initialize';
 async function initialize(){
  if(session)return session;
@@ -31,7 +31,7 @@ self.onmessage=async e=>{try{
  x0=Math.max(0,x0-96);y0=Math.max(0,y0-96);x1=Math.min(width-1,x1+96);y1=Math.min(height-1,y1+96);
  const w=x1-x0+1,h=y1-y0+1,n=w*h,image=new Uint8Array(n*3),modelMask=new Uint8Array(n);
  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const p=y*w+x,q=(y+y0)*width+x+x0;for(let c=0;c<3;c++)image[c*n+p]=source[q*4+c];modelMask[p]=mask[q]?0:255;}
- self.postMessage({progress:detail?'正在精细修复，请保持此页面打开…':'正在补全背景，请保持此页面打开…'});
+ self.postMessage({progress:detail?'正在修复并保护细节，请保持此页面打开…':'正在补全背景，请保持此页面打开…'});
  const target=detail?source.slice():source;
  const inputs={image:new ort.Tensor('uint8',image,[1,3,h,w]),mask:new ort.Tensor('uint8',modelMask,[1,1,h,w])};let result;
  try{

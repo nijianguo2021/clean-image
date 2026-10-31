@@ -20,3 +20,24 @@ const tw=40,th=40,tm=new Uint8Array(tw*th),to=new Uint8ClampedArray(tm.length*4)
 for(let y=0;y<th;y++)for(let x=0;x<tw;x++){const p=y*tw+x;to.set([(x+y)%2?255:0,(x+y)%2?255:0,(x+y)%2?255:0,255],p*4);if(x>=15&&x<=20&&y>=15&&y<=20)tm[p]=1;}
 const tb=tt.slice();refineSmoothGaps(tt,to,tm,tw,th);assert.deepEqual(tt,tb);
 console.log('PASS: alpha preserved; empty selection unchanged; large gaps and rough texture retain model result');
+
+// The model may already reconstruct a line correctly. A low-variation pair of
+// borders in the other direction must not flatten that structure afterwards.
+function preservedStructure(name,valueAt,selected,generatedAt=valueAt){
+ const width=80,height=80,source=new Uint8ClampedArray(width*height*4),mask=new Uint8Array(width*height),target=new Uint8ClampedArray(source.length);
+ for(let y=0;y<height;y++)for(let x=0;x<width;x++){
+  const p=y*width+x,v=valueAt(x,y),generated=generatedAt(x,y);
+  source.set([v,v,v,255],p*4);target.set([generated,generated,generated,255],p*4);mask[p]=selected(x,y)?1:0;
+ }
+ const before=target.slice();refineSmoothGaps(target,source,mask,width,height);
+ assert.deepEqual(target,before,name+' must survive the refinement byte for byte');
+}
+preservedStructure('Vertical line in a broad mask',(x)=>x===39||x===40?30:160,(x,y)=>x>=36&&x<=43&&y>=20&&y<=59);
+preservedStructure('Vertical line in a tight mask',(x)=>x===39||x===40?30:160,(x,y)=>(x===39||x===40)&&y>=20&&y<=59);
+preservedStructure('Horizontal line in a broad mask',(_,y)=>y===39||y===40?30:160,(x,y)=>y>=36&&y<=43&&x>=20&&x<=59);
+preservedStructure('Horizontal line in a tight mask',(_,y)=>y===39||y===40?30:160,(x,y)=>(y===39||y===40)&&x>=20&&x<=59);
+preservedStructure('One-pixel diagonal line',(x,y)=>x===y?30:160,(x,y)=>x>=20&&x<=59&&y>=20&&y<=59);
+preservedStructure('Tightly selected diagonal line',(x,y)=>x===y?30:160,(x,y)=>x===y&&x>=20&&x<=59);
+preservedStructure('Thin color boundary',(x)=>x<40?70:160,(x,y)=>x>=39&&x<=40&&y>=20&&y<=59);
+preservedStructure('Model-generated interior detail',()=>160,(x,y)=>x>=36&&x<=43&&y>=20&&y<=59,(x,y)=>(x===39||x===40)&&y>=25&&y<=54?30:160);
+console.log('PASS: vertical/horizontal/diagonal lines, tight masks, thin boundary and generated interior detail preserved');
