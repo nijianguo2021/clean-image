@@ -52,3 +52,11 @@ node test-loader.cjs
 - 文字检测：https://github.com/RapidAI/RapidOCR ，PP-OCRv4 mobile detection，Apache-2.0，许可证 `models/text-det-LICENSE.txt`。模型 SHA-256：`d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9`。
 - ONNX Runtime：`ort/LICENSE.txt`、`ort/ThirdPartyNotices.txt`。
 - fflate 0.8.2：`vendor/fflate-LICENSE.txt`。
+
+## edgefix1：修正淡字残影
+
+MI-GAN pipeline 在返回结果前会对已知区域遮罩做 3×3 最大池化和 5×5 高斯模糊，再混合原图与生成内容。旧实现把用户选区直接交给模型，导致细笔画边缘混回原文字，留下浅色轮廓。本地 ONNX 节点与官方 pipeline 源码已交叉核验：https://github.com/Picsart-AI-Research/MI-GAN/blob/main/scripts/create_onnx_pipeline.py
+
+修复仅对模型输入增加 3 像素保护区，最终仍严格按原有红色选区写回。预览选区和输出范围不扩大，无需新模型。回归验证 maxpool3 + gaussian5 下每个原选中点的旧图混合系数为零；真实 WASM 两张样图 A/B 证明选区外 RGB 与 alpha 零变化，浅色轮廓明显减轻。没有选择到的字尾和模型生成纹理误差仍可能存在，不等于完全无痕。
+
+新增回归：`node test-repair-mask.cjs`；`test-worker.cjs` 同时验证推理保护区与最终输出所有权分离。浏览器实际自动识别、修复和 PNG 导出流程验证通过。

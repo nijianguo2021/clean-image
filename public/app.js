@@ -3,7 +3,7 @@ const $=id=>document.getElementById(id),canvas=$('image'),overlay=$('mask'),ctx=
 let original=null,current=null,strokes=[],drawing=null,worker=null,working=false,comparing=false,downloadURL=null,fileName='图片';
 function status(text){$('status').textContent=$('editStatus').textContent=text;}
 function clearError(){$('retry').hidden=true;$('errorDetails').hidden=true;$('errorDetails').open=false;$('errorText').textContent='';}
-function showError(data){status(data.error);$('errorDetails').hidden=false;$('errorText').textContent=(data.code||'worker')+' · core1\n'+(data.detail||data.error);$('retry').textContent=data.code==='resource'?'重试加载':'重试处理';$('retry').hidden=data.code==='selection'||data.code==='compatibility';}
+function showError(data){status(data.error);$('errorDetails').hidden=false;$('errorText').textContent=(data.code||'worker')+' · edgefix1\n'+(data.detail||data.error);$('retry').textContent=data.code==='resource'?'重试加载':'重试处理';$('retry').hidden=data.code==='selection'||data.code==='compatibility';}
 let workerTimer,lastJob='repair',candidateGroups=[];
 function clearCandidates(){candidateGroups=[];$('candidateList').replaceChildren();$('candidatePanel').hidden=true;}
 function syncCandidates(){for(const group of candidateGroups)group.input.checked=strokes.includes(group.stroke)&&!group.stroke.disabled;}
@@ -65,7 +65,7 @@ $('drawMode').onclick=()=>setMode('draw');$('eraseMode').onclick=()=>setMode('er
 function runWorkerJob(kind,payload,transfers,done){
  lastJob=kind;clearError();lock(true);armWorkerTimer();
  try{
-  worker??=new Worker('ai-worker.js?v=core1');
+  worker??=new Worker('ai-worker.js?v=edgefix1');
   worker.onmessage=e=>{
    if(e.data.progress){status(e.data.progress);armWorkerTimer();return;}
    clearTimeout(workerTimer);lock(false);

@@ -1,5 +1,6 @@
 const assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs');
 const {planRepairRegions}=require('./public/repair-regions.js');
+const {buildInferenceMask}=require('./public/repair-mask.js');
 const {refineSmoothGaps}=require('./public/repair-quality.js');
 const {refineTexture}=require('./public/texture-repair.js');
 let messages=[],calls=[],differentOutputs=false;
@@ -12,7 +13,7 @@ const session={outputNames:['result'],async run({image,mask}){
 const fakeDetection={regions:[{x:1,y:1,width:3,height:2,runs:[[1,1,2,1]]}],runs:[[1,1,2,1]],pixels:2,skipped:[]};
 const self={location:{href:'https://example.test/ai-worker.js'},postMessage:m=>messages.push(m)};
 class RepairError extends Error{constructor(code,message){super(message);this.code=code;}}
-const context=vm.createContext({self,importScripts(){},planRepairRegions,refineSmoothGaps,refineTexture,RepairError,explainError:e=>({error:e.message,code:e.code}),TextDetection:{detectTextCandidates:async()=>fakeDetection},ort:{Tensor},testSession:session,Uint8Array,Uint8ClampedArray,Uint32Array,Date,Math,console});
+const context=vm.createContext({self,importScripts(){},planRepairRegions,buildInferenceMask,refineSmoothGaps,refineTexture,RepairError,explainError:e=>({error:e.message,code:e.code}),TextDetection:{detectTextCandidates:async()=>fakeDetection},ort:{Tensor},testSession:session,Uint8Array,Uint8ClampedArray,Uint32Array,Date,Math,console});
 const workerSource=fs.readFileSync('./public/ai-worker.js','utf8');
 vm.runInContext(workerSource,context);
 vm.runInContext('initializeRepair=async()=>testSession;initializeText=async()=>testSession;',context);
@@ -45,7 +46,8 @@ vm.runInContext('initializeRepair=async()=>testSession;initializeText=async()=>t
   assert.deepEqual(Array.from(call.image.dims),[1,3,r.height,r.width]);
   for(let y=0;y<r.height;y++)for(let x=0;x<r.width;x++){
    const p=y*r.width+x,q=(y+r.y)*ow+x+r.x;
-   assert.equal(call.mask.data[p],overlapMask[q]?0:255,'Inference must hide every global selection in the local crop');
+   let hidden=false;for(let dy=-3;dy<=3;dy++)for(let dx=-3;dx<=3;dx++){const xx=x+r.x+dx,yy=y+r.y+dy;if(xx>=0&&xx<ow&&yy>=0&&yy<oh&&overlapMask[yy*ow+xx])hidden=true;}
+   assert.equal(call.mask.data[p],hidden?0:255,'Inference hides global selections and their 3px blend guard');
    if(owner[q]&&owner[q]!==index+1)neighborContextPixels++;
    for(let c=0;c<3;c++)assert.equal(call.image.data[c*n+p],overlapSource[q*4+c],'Later groups must still read the original source');
   }

@@ -1,5 +1,5 @@
 // Public runtime/model files only. Image pixels never leave this worker/device.
-importScripts('repair-loader.js?v=mobile1','repair-quality.js?v=detail5','repair-regions.js?v=core1','text-detect.js?v=core1','texture-repair.js?v=core1');
+importScripts('repair-loader.js?v=mobile1','repair-quality.js?v=detail5','repair-regions.js?v=core1','text-detect.js?v=core1','texture-repair.js?v=core1','repair-mask.js?v=edgefix1');
 let session=null,textSession=null,runtimeReady=false,resource=null,phase='initialize';
 const textAsset={path:'models/text-det.onnx',name:'文字识别资源',size:4745517,hash:'d2a7720d45a54257208b1e13e36a8479894cb74155a5efe29462512d42f49da9'};
 const textMirror='https://gcore.jsdelivr.net/gh/nijianguo2021/clean-image@60263c21bee0dd51b550495a10282835ff120e55/public/';
@@ -55,11 +55,13 @@ self.onmessage=async e=>{try{
  const target=source.slice();
  for(let index=0;index<plan.regions.length;index++){
   const region=plan.regions[index],{x:x0,y:y0,width:w,height:h}=region.rect,n=w*h;
-  const image=new Uint8Array(n*3),modelMask=new Uint8Array(n);
+  // MI-GAN's internal 3x3 max-pool + 5x5 blur blends original pixels along
+  // the input hole's edge. Hide a 3px guard during inference so old lettering
+  // cannot be blended back into the actual selection. Writes stay exact below.
+  const image=new Uint8Array(n*3),modelMask=buildInferenceMask(mask,width,height,region.rect,3);
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
    const p=y*w+x,q=(y+y0)*width+x+x0;
    for(let c=0;c<3;c++)image[c*n+p]=source[q*4+c];
-   modelMask[p]=mask[q]?0:255;
   }
   report(`正在修复局部 ${index+1}/${plan.regions.length}，请保持页面打开…`);
   const inputs={image:new ort.Tensor('uint8',image,[1,3,h,w]),mask:new ort.Tensor('uint8',modelMask,[1,1,h,w])};let result;
