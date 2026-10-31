@@ -52,6 +52,16 @@ run("setMode('pan')");pointer('pointerdown',5,180,250);pointer('pointermove',5,1
 assert.equal(run('strokes.length'),2);
 run("setMode('draw')");pointer('pointerdown',6,180,250);pointer('pointercancel',6,180,250);
 assert.equal(run('strokes.length'),2);
+run("setMode('erase')");pointer('pointerdown',7,180,250);
+assert.equal(run('drawing.erase'),true);close(run('drawing.size*view.base*view.zoom'),24);
+pointer('pointerdown',8,260,250);assert.equal(run('strokes.length'),2,'Second finger must roll back the unfinished eraser');
+pointer('pointermove',8,300,250);pointer('pointerup',8,300,250);pointer('pointermove',7,190,250);
+assert.equal(run('strokes.length'),2,'Lifting one finger must not resume erasing');pointer('pointerup',7,190,250);
+pointer('pointerdown',9,180,250);pointer('pointercancel',9,180,250);
+assert.equal(run('strokes.length'),2,'Cancelled eraser must leave no operation');
+pointer('pointerdown',10,180,250);pointer('pointerup',10,180,250);
+assert.equal(run('strokes.length'),3);assert.equal(run('strokes[2].erase'),true);
+get('undo').onclick();assert.equal(run('strokes.length'),2,'Completed eraser must be undoable');
 assert.equal(get('image').width,1179);assert.equal(get('image').height,1579);
 assert.equal(get('mask').width,1179);assert.equal(get('mask').height,1579);
 console.log('PASS: anchored zoom, coordinate mapping, brush precision, pan bounds, pinch rollback, interrupted stroke, unchanged output size');
