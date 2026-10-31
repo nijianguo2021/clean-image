@@ -1,22 +1,22 @@
 // MI-GAN runs on this device. Only model/runtime files are downloaded.
-importScripts('repair-loader.js?v=loadfix2','repair-quality.js?v=detail4');
+importScripts('repair-loader.js?v=mobile1','repair-quality.js?v=detail4');
 let session=null,phase='initialize';
 async function initialize(){
  if(session)return session;
  phase='initialize';
  if(typeof WebAssembly!=='object')throw new RepairError('compatibility','当前浏览器不支持图片修复，请用更新后的系统浏览器打开。');
- const resource=createResourceLoader({baseURL:self.location.href,report:progress=>self.postMessage({progress})});
- await resource(ASSETS.script);
- importScripts(new URL(ASSETS.script.path+'?asset='+ASSETS.script.hash.slice(0,12),self.location.href).href);
- await resource(ASSETS.module);
- const moduleURL=new URL(ASSETS.module.path+'?asset='+ASSETS.module.hash.slice(0,12),self.location.href).href;
+ const appleMobile=/iPhone|iPad|iPod/.test(navigator.userAgent)||(/Mac/.test(navigator.platform)&&navigator.maxTouchPoints>1);
+ const resource=createResourceLoader({baseURL:self.location.href,preferMirror:appleMobile,report:progress=>self.postMessage({progress})});
+ await Promise.all([resource(ASSETS.script),resource(ASSETS.module),resource(ASSETS.unpack)]);
+ importScripts(resource.urlFor(ASSETS.script),resource.urlFor(ASSETS.unpack));
+ const moduleURL=resource.urlFor(ASSETS.module);
  try{
   ort.env.wasm.numThreads=1;ort.env.wasm.proxy=false;
   ort.env.wasm.wasmPaths={mjs:moduleURL};
   ort.env.wasm.wasmBinary=await loadBinary(resource,'wasm');
   const model=await loadBinary(resource,'model');
   self.postMessage({progress:'资源已就绪，正在启动修复组件…'});
-  session=await ort.InferenceSession.create(model,{executionProviders:['wasm'],graphOptimizationLevel:'all'});
+  session=await deadline(ort.InferenceSession.create(model,{executionProviders:['wasm'],graphOptimizationLevel:'all'}),90000,'启动修复组件超过 90 秒，请重试或更新系统浏览器。');
   return session;
  }finally{ort.env.wasm.wasmBinary=undefined;}
 }
